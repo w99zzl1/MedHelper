@@ -1,5 +1,5 @@
 script_name("Med Helper")
-script_version_number("02.04.2025")
+script_version("1")
 script_description("Universal helper for the Samp Advance RP Family")
 script_author("Arseniy Samsonov")
 
@@ -11,7 +11,7 @@ local faicons = require('fAwesome6')
 local ffi = require('ffi')
 local encoding = require 'encoding'
 encoding.default = 'CP1251'
-local function u8(s) return encoding.UTF8:decode(s) end
+local u8 = encoding.UTF8
 local inicfg = require 'inicfg'
 local vector = require("vector3d")
 
@@ -52,6 +52,7 @@ local sampev = require 'lib.samp.events'
 commands = {"f", "r", "t", "n", "w", "s"}
 bi = false
 
+local serverName = sampGetCurrentServerName()
 ----------------------------------------[-= Json =-]----------------------------------------
 local function json(filePath)
     local class = {}
@@ -116,6 +117,13 @@ local autoPinCode = imgui.new.bool(j.autoPinCode)
 
 local Parol = imgui.new.char(256)
 local PinCode = imgui.new.char(256)
+
+local audio = nil
+local tracks = {}
+local volume = imgui.new.float(0.3)
+local musicDir = ""
+local currentTrack = 1
+local isPlaying = false
 
 ----------------------------------------[-= Перенос строк =-]----------------------------------------
 function sampev.onSendCommand(msg)
@@ -189,7 +197,7 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
                 if line:find(u8'Должность:%s+(.+)') then
                     post = line:match(u8'Должность:%s+(.+)')
                 end
-                if line:find(u8'Организация:%s+(.+)') then
+                if line:find('Организация:%s+(.+)') then
                     org = line:match(u8"Организация:%s+(.+)")
                 end
                 if line:find(u8'Ранг:%s+(.+)') then
@@ -223,32 +231,51 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
             local total_play = play_time_h * 60 + play_time_m
             local total_afk = afk_time_h * 60 + afk_time_m
             local clean_time = math.max(total_play - total_afk, 0)
+
         
             local result_h = math.floor(clean_time / 60)
             local result_m = clean_time % 60
+
+            if serverName == 'Advance RolePlay | Blue Server' then norma_m = 180 end
+            if serverName == 'Advance RolePlay | Red Server' then norma_m = 60 end
+            if serverName == 'Advance RolePlay | Green Server' then norma_m = 60 end
+            if serverName == 'Advance RolePlay | Lime Server' then norma_m = 60 end
+            if serverName == 'Advance RolePlay | Chocolate Server' then norma_m = 60 end
+
+        -- Преобразуем часы в минуты и добавляем к минутам
+        local totalMinutes = (result_h * 60) + result_m
+
         if result_h == 0 then
-            sampAddChatMessage(u8'{FF1493}[Med Helper]: {FFFFFF}Чистый онлайн за сегодня {FF1493}' .. result_m .. u8" минут", 0xFF1493)
+            wait(100)
+            sampAddChatMessage(u8'{FF1493}[Med Helper]: {FFFFFF}Чистый онлайн за сегодня {FF1493}' .. result_m .. " минут", 0xFF1493)
+            if totalMinutes <= norma_m then
+                endnorma_m = norma_m - totalMinutes
+                sampAddChatMessage('[Med Helper]: {FFFFFF}До нормы онлайна лидерского поста на вашем сервере вам осталось отыграть ещё: ' .. endnorma_m .. ' минут', 0xFF1493)
+            end
         else
-            sampAddChatMessage(u8'{FF1493}[Med Helper]: {FFFFFF}Чистый онлайн за сегодня {FF1493}' .. result_h .. u8" ч " .. result_m .. u8" мин", 0xFF1493)
+            sampAddChatMessage('{FF1493}[Med Helper]: {FFFFFF}Чистый онлайн за сегодня {FF1493}' .. result_h .. " ч " .. result_m .. " мин", 0xFF1493)
+            if totalMinutes <= norma_m then
+                endnorma_m = norma_m - totalMinutes
+                sampAddChatMessage('[Med Helper]: {FFFFFF}До нормы онлайна лидерского поста на вашем сервере вам осталось отыграть ещё: ' .. endnorma_m .. ' минут', 0xFF1493)
+            end
         end
         end
 
         local crug = 0
-        local totalLines = {0, 0, 0, 0, 0} -- Массив для хранения количества строк для каждого этапа
+        local totalLines = {0, 0, 0, 0, 0}
         
         -- Проверка диалога 415
         if autoORG[0] and id == 415 then
             sampSendDialogResponse(415, 1, 0) 
         end
         
-        -- Обработка диалога 416 (по кнопкам)
         if autoORG[0] and id == 416 then
             if isDone then
                 return
             end
             sampSendDialogResponse(416, 1, buttonIndex)
             wait(0)
-            sampAddChatMessage(u8'Выбрана кнопка: ' .. (buttonIndex + 1), -2)
+            sampAddChatMessage('Выбрана кнопка: ' .. (buttonIndex + 1), -2)
         
             buttonIndex = buttonIndex + 1
         
@@ -259,7 +286,6 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
             end
         end
         
-        -- Обработка диалога 417 (считаем строки)
         if autoORG[0] and id == 417 then
             sampSendDialogResponse(417, 1, 0)
         
@@ -268,37 +294,31 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
                 linesInText = linesInText + 1
             end
         
-            if text:find(u8"За сегодня не найдено никаких записей по этому параметру") then
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Найдено сообщение: 'За сегодня не найдено никаких записей по этому параметру'", 0xFF1493)
+            if text:find("За сегодня не найдено никаких записей по этому параметру") then
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Найдено сообщение: 'За сегодня не найдено никаких записей по этому параметру'", 0xFF1493)
                 linesInText = 0
             end
         
-            -- Сохраняем количество строк для текущего этапа (crug)
             totalLines[crug] = linesInText
         
-            -- Переход к следующему этапу, если не закончено
             crug = buttonIndex
             print(crug)
         
-            -- Если все этапы завершены, выводим результат
             if crug >= 4 then
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Результаты подсчёта строк:", 0xFF1493)
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Принято: " .. totalLines[1], 0xFF1493)
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Уволено: " .. totalLines[2] + totalLines[3], 0xFF1493)
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Повышено: " .. totalLines[4], 0xFF1493)
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Понижено: " .. totalLines[5], 0xFF1493)
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Результаты подсчёта строк:", 0xFF1493)
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Принято: " .. totalLines[1], 0xFF1493)
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Уволено: " .. totalLines[2] + totalLines[3], 0xFF1493)
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Повышено: " .. totalLines[4], 0xFF1493)
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Понижено: " .. totalLines[5], 0xFF1493)
         
-                -- Сброс счётчика, если нужно, или оставляем его для дальнейших циклов
                 crug = 0
             else
-                -- Переход к следующему этапу
                 wait(1000)
                 sampSendChat('/org')
             end
         end
         
 
-        -- Ввод команды /org не должен скрывать диалог
         if autoLogin[0] and id == j.Padialogid then
             local password = j.parol or ""
             if password ~= "" then
@@ -316,10 +336,9 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
             return true
         end
 
-        -- Обработка отчета и выбор кнопки
         if searchIsp and id == 191 then
-            sampSendDialogResponse(191, 1, 5)  -- 1 - это выбор кнопки, 5 - это 6-й пункт (индекс 5, listitem с 0)
-            sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Пожалуйста, подождите...", 0xFF1493)
+            sampSendDialogResponse(191, 1, 5)
+            sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Пожалуйста, подождите...", 0xFF1493)
         end
 
         if searchIsp and id == 66 then
@@ -329,7 +348,7 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
             
             for i, nick in ipairs(nicks) do
                 if nick == nicknameIsp then
-                    index = i - 1  -- index начинается с 0, поэтому уменьшаем на 1
+                    index = i - 1
                     nickFound = true
                     break
                 end
@@ -337,7 +356,7 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
             
             if nickFound then
                 sampSendDialogResponse(66, 1, index)
-                sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Отчет найден: " .. nicks[index + 1], 0xFF1493)
+                sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Отчет найден: " .. nicks[index + 1], 0xFF1493)
                 searchIsp = false
             else
                 page = page + 1
@@ -346,7 +365,6 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
         end    
     end)
 end
-
     
 -- получить ники из /showall (для /isp)
 function extractNicks(text)
@@ -362,33 +380,33 @@ end
 
 function sampev.onServerMessage(color, text)
     lua_thread.create(function()
-        if text:find(u8"{80aaff}Свечи") then
+        if text:find("{80aaff}Свечи") then
             illines1 = true
         end
-        if text:find(u8"{80aaff}Массажи") then
+        if text:find("{80aaff}Массажи") then
             illines2 = true
         end
-        if text:find(u8"{80aaff}Приём антибиотиков") then
+        if text:find("{80aaff}Приём антибиотиков") then
             illines3 = true
         end
-        if text:find(u8"{80aaff}Ингаляция") then
+        if text:find("{80aaff}Ингаляция") then
             illines4 = true
         end
-        if text:find(u8"{80aaff}Капельница") then
+        if text:find("{80aaff}Капельница") then
             illines5 = true
         end
 
 
-        if text:find(u8"{ff9999}Сдача крови") then
+        if text:find("{ff9999}Сдача крови") then
             analys1 = true
         end
-        if text:find(u8"{ff9999}Сдача мочи") then
+        if text:find("{ff9999}Сдача мочи") then
             analys2 = true
         end
-        if text:find(u8"{ff9999}Компьютерная томография") then
+        if text:find("{ff9999}Компьютерная томография") then
             analys3 = true
         end
-        if text:find(u8"{ff9999}Магнитно-резонансная томография") then
+        if text:find("{ff9999}Магнитно-резонансная томография") then
             analys4 = true
         end
     end)
@@ -450,24 +468,23 @@ function cmd_call(arg)
                     if myNick and targetNick then
                         sampSendChat('/call ' .. id)
 
-                        sampSendChat(string.format(u8"/r Бригада состоящая из сотрудников %s и %s выехала на вызов!", myNick, targetNick))
+                        sampSendChat(string.format("/r Бригада состоящая из сотрудников %s и %s выехала на вызов!", myNick, targetNick))
                     else
-                        sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Не удалось получить никнейм или инициалы игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
+                        sampAddChatMessage('[Med Helper]: {FFFFFF}Не удалось получить никнейм или инициалы игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
                     end
                 else
-                    sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
+                    sampAddChatMessage('[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
                 end
             else
-                sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Игрок с ID {FF1493}' .. id .. ' {ffffff}не подключен к серверу', 0xFF1493)
+                sampAddChatMessage('[Med Helper]: {FFFFFF}Игрок с ID {FF1493}' .. id .. ' {ffffff}не подключен к серверу', 0xFF1493)
             end
         else
-            sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF1493}/call [id игрока]', 0xFF1493)
+            sampAddChatMessage('[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF1493}/call [id игрока]', 0xFF1493)
         end
     else
-        sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Используйте: {FF1493}/call [id игрока]', 0xFF1493)
+        sampAddChatMessage('[Med Helper]: {FFFFFF}Используйте: {FF1493}/call [id игрока]', 0xFF1493)
     end
 end
-
 
 function cmd_invite(args)
     lua_thread.create(function()
@@ -482,31 +499,74 @@ function cmd_invite(args)
                         if nickname then
                             nickname = nickname:gsub("_", " ")
 
-                            sampSendChat(u8'/do На плечах висит рюкзак.', -1)
+                            sampSendChat('/do На плечах висит рюкзак.', -1)
                             wait(900)
-                            sampSendChat(u8'/me снял рюкзак, открыл его и достал форму и бейджик', -1)
+                            sampSendChat('/me снял рюкзак, открыл его и достал форму и бейджик', -1)
                             wait(900)
-                            sampSendChat(u8'/me передал вещи ' .. nickname, -1)
+                            sampSendChat('/me передал вещи ' .. nickname, -1)
                             wait(900)
-                            sampSendChat(u8'/invite ' .. id, -1)
+                            sampSendChat('/invite ' .. id, -1)
                             wait(900)
-                            sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи', -1)
+                            sampSendChat('/me закрыл рюкзак и повесил его обратно на плечи', -1)
                         else
-                            sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
+                            sampAddChatMessage('[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
                         end
                     else
-                        sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Игрок с ID {FF1493}' .. id .. '{FFFFFF} не подключен к серверу.', 0xFF1493)
+                        sampAddChatMessage('[Med Helper]: {FFFFFF}Игрок с ID {FF1493}' .. id .. '{FFFFFF} не подключен к серверу.', 0xFF1493)
                     end
                 else
-                    sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF1493}/invite [id игрока]', 0xFF1493)
+                    sampAddChatMessage('[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF1493}/invite [id игрока]', 0xFF1493)
                 end
             else
-                sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Используйте: {FF1493}/invite [id игрока]", 0xFF1493)
+                sampAddChatMessage("[Med Helper]: {FFFFFF}Используйте: {FF1493}/invite [id игрока]", 0xFF1493)
             end
         else
-            sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Функция не доступна для вашей {FF1493}должности.', 0xFF1493)
+            sampAddChatMessage('[Med Helper]: {FFFFFF}Функция не доступна для вашей {FF1493}должности.', 0xFF1493)
         end
     end)
+end
+
+function cmd_uninvite(args)
+    local id, reason = args:match("^(%S+)%s+(.+)$")
+    if id and reason then  -- переданы ID и причина
+        local playerId = tonumber(id)  -- ID в число
+        if playerId then  -- ID является числом
+            local playerExists = sampIsPlayerConnected(playerId)  -- подключен ли игрок
+
+            if playerExists then  -- Если игрок на сервере
+                local nickname = sampGetPlayerNickname(playerId)  -- никнейм игрока по его ID
+                if nickname then  -- Если получен никнейм
+                    nickname = nickname:gsub("_", " ")  -- "_" на пробел в никнейме
+
+                    -- Выполняем действия с приказом
+                    sampSendChat('/me взял бланк с приказом')
+                    wait(900)
+                    sampSendChat('/me написал текст приказа об увольнении игрока ' .. nickname)
+                    wait(900)
+                    sampSendChat('/me поставил печать')
+                    wait(900)
+                    sampSendChat('/me поставил подпись под документом')
+                    wait(900)
+                    sampSendChat('/do Приказ подписан.', -1)
+                    wait(900)
+                    sampSendChat('/uninvite ' .. id .. ' ' .. reason)
+                    sampSendChat('/f 1 Сотрудник ' .. nickname .. ' был уволен. Причина: ' .. reason)
+                else
+                    -- Если не удалось получить никнейм
+                    sampAddChatMessage('[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF0000}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
+                end
+            else
+                -- Если игрок не на сервере
+                sampAddChatMessage('[Med Helper]: {FFFFFF}Игрок с ID {FF0000}' .. id .. '{FFFFFF} не подключен к серверу.', 0xFF1493)
+            end
+        else
+            -- Если ID не число
+            sampAddChatMessage('[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF0000}/uninvite [id игрока] [причина]', 0xFF1493)
+        end
+    else
+        -- Если не указан ID и причина
+        sampAddChatMessage("[Med Helper]: {FFFFFF}Используйте: {FF0000}/uninvite [id игрока] [причина]", 0xFF1493)
+    end
 end
 
 function cmd_changeskin(args)
@@ -516,14 +576,14 @@ function cmd_changeskin(args)
             local id = args:match("^(%S+)$")
 
             if not id then
-                sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Используйте: {FF1493}/changeskin [id игрока]", 0xFF1493)
+                sampAddChatMessage("[Med Helper]: {FFFFFF}Используйте: {FF1493}/changeskin [id игрока]", 0xFF1493)
                 return
             end
 
             local playerId = tonumber(id)
             
             if not playerId then
-                sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF1493}/changeskin [id игрока]', 0xFF1493)
+                sampAddChatMessage('[Med Helper]: {FFFFFF}Неверный ID игрока. Используйте: {FF1493}/changeskin [id игрока]', 0xFF1493)
                 return
             end
 
@@ -534,23 +594,23 @@ function cmd_changeskin(args)
                 if nickname then
                     nickname = nickname:gsub("_", " ")
 
-                    sampSendChat(u8'/do На плечах висит рюкзак.', -1)
+                    sampSendChat('/do На плечах висит рюкзак.', -1)
                     wait(900)
-                    sampSendChat(u8'/me снял рюкзак, открыл его и достал форму и бейджик', -1)
+                    sampSendChat('/me снял рюкзак, открыл его и достал форму и бейджик', -1)
                     wait(900)
-                    sampSendChat(u8'/me передал вещи ' .. nickname, -1)
+                    sampSendChat('/me передал вещи ' .. nickname, -1)
                     wait(900)
-                    sampSendChat(u8'/changeskin ' .. id, -1)
+                    sampSendChat('/changeskin ' .. id, -1)
                     wait(900)
-                    sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи', -1)
+                    sampSendChat('/me закрыл рюкзак и повесил его обратно на плечи', -1)
                 else
-                    sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
+                    sampAddChatMessage('[Med Helper]: {FFFFFF}Не удалось получить никнейм игрока с ID {FF1493}' .. id .. '{FFFFFF}. Возможно, игрок не подключен.', 0xFF1493)
                 end
             else
                 sampSendChat('/changeskin ' .. id)
             end
         else
-            sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Функция не доступна для вашей {FF1493}должности.', 0xFF1493)
+            sampAddChatMessage('[Med Helper]: {FFFFFF}Функция не доступна для вашей {FF1493}должности.', 0xFF1493)
         end
     end)
 end
@@ -567,14 +627,14 @@ end
 
 function f(args)
     if RPradio[0] then
-        sampSendChat(u8"/me достал рацию, зажал кнопку и что то сказал")
+        sampSendChat("/me достал рацию, зажал кнопку и что то сказал")
     end
     sampSendChat(string.format("/f %s", args))
 end
 
 function r(args)
     if RPradio[0] then
-        sampSendChat(u8"/me достал рацию, зажал кнопку и что то сказал")
+        sampSendChat("/me достал рацию, зажал кнопку и что то сказал")
     end
     sampSendChat(string.format("/r %s", args))
 end
@@ -587,14 +647,14 @@ end
 
 function sms(args)
     if RPsms[0] then
-        sampSendChat(u8"/me взял в руки телефон и начал что то печатать")
+        sampSendChat("/me взял в руки телефон и начал что то печатать")
     end
     sampSendChat(string.format("/sms %s", args))
 end
 
 function find()
     if RPfind[0] then
-        sampSendChat(u8"/me достал служебный КПК и проверил список сотрудников")
+        sampSendChat("/me достал служебный КПК и проверил список сотрудников")
     end
     sampSendChat('/find')
 end
@@ -602,13 +662,13 @@ end
 function drive()
     lua_thread.create(function()
         if rank >= 9 then
-            sampSendChat(u8"/r Вызываю эвакуатор для доставки служебного транспорта на парковку.")
+            sampSendChat("/r Вызываю эвакуатор для доставки служебного транспорта на парковку.")
             wait(1000)
             sampSendChat('/r (( /drive 5 sec ))')
             wait(4000)
             sampSendChat('/drive')
         else
-            sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Функция не доступна для вашей {FF1493}должности.', 0xFF1493)
+            sampAddChatMessage('[Med Helper]: {FFFFFF}Функция не доступна для вашей {FF1493}должности.', 0xFF1493)
         end
     end)
 end
@@ -616,8 +676,8 @@ end
 function ud()
     lua_thread.create(function()
         local myname = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(playerPed)))
-        sampSendChat(u8'/me легким движением руки достал из кармана удостоверение, показав его человеку на против')
-        sampSendChat(u8'/do Имя: '.. myname ..' | Организация: ' .. org .. ' | Должность: '.. post)
+        sampSendChat('/me легким движением руки достал из кармана удостоверение, показав его человеку на против')
+        sampSendChat('/do Имя: '.. myname ..' | Организация: ' .. org .. ' | Должность: '.. post)
     end)
 end
 
@@ -630,7 +690,7 @@ imgui.OnInitialize(function()
     imgui.GetIO().Fonts:AddFontFromMemoryCompressedBase85TTF(faicons.get_font_data_base85('solid'), 14, config, iconRanges)
 end)
 
-local active_tab = 1  -- активная вкладка по умолчанию
+local active_tab = 1
 
 imgui.OnFrame(function() return MainMenu[0] end, function(player)
     darkStyle()
@@ -639,15 +699,14 @@ imgui.OnFrame(function() return MainMenu[0] end, function(player)
     imgui.SetNextWindowSize(imgui.ImVec2(700, 500), imgui.Cond.Always)
     imgui.Begin('Med Helper', MainMenu)
 
-    -- Левая панель с кнопками
     imgui.BeginChild('LeftPanel', imgui.ImVec2(150, 0), true)
 
     local tabs = {
-        {id = 1, label = faicons('users') .. ' Общее'},
-        {id = 2, label = faicons('spinner') .. ' Авто-отыгровки'},
-        {id = 3, label = faicons('car') .. ' Транспорт'},
-        {id = 4, label = faicons('receipt') .. ' Справочник'},
-        {id = 5, label = faicons('gear') .. ' Настройки'},
+        {id = 1, label = faicons('users') .. u8' Общее'},
+        {id = 2, label = faicons('spinner') .. u8' Авто-отыгровки'},
+        {id = 3, label = faicons('car') .. u8' Транспорт'},
+        {id = 4, label = faicons('receipt') .. u8' Справочник'},
+        {id = 5, label = faicons('gear') .. u8' Настройки'},
     }
 
     for _, tab in ipairs(tabs) do
@@ -670,53 +729,52 @@ imgui.OnFrame(function() return MainMenu[0] end, function(player)
 
     imgui.EndChild()
 
-    -- правая панель для
     imgui.SameLine()
     imgui.BeginChild('RightPanel', imgui.ImVec2(0, 0), true)
 
     if active_tab == 1 then
-        if imgui.Checkbox("Не в организации", noneOrg) then j.noneOrg = noneOrg[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8"Не в организации", noneOrg) then j.noneOrg = noneOrg[0] json(jPath).save(j) end
         imgui.SameLine()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 3) -- Смещаем иконку вправо на 3 пикселя
         imgui.Text(faicons('question'))
         if imgui.IsItemHovered() then
             imgui.BeginTooltip()
-            imgui.Text('при использовании команды /fn в чат не будет отправлятся лишняя "1", если вы не устроены в мэрии')
+            imgui.Text(u8'при использовании команды /fn в чат не будет отправлятся лишняя "1", если вы не устроены в мэрии')
             imgui.EndTooltip()
         end
-        if imgui.Checkbox('Чат на T', openChatT) then j.openChatT = openChatT[0] json(jPath).save(j) end
-        if imgui.Checkbox('Cruise Control', cruiseControl) then j.cruiseControl = cruiseControl[0] json(jPath).save(j) end
-        if imgui.Checkbox('Автоотчет', autoORG) then j.autoORG = autoORG[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8'Чат на T', openChatT) then j.openChatT = openChatT[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8'Cruise Control', cruiseControl) then j.cruiseControl = cruiseControl[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8'Автоотчет', autoORG) then j.autoORG = autoORG[0] json(jPath).save(j) end
         imgui.SameLine()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 3) -- Смещаем иконку вправо на 3 пикселя
         imgui.Text(faicons('question'))
         if imgui.IsItemHovered() then
             imgui.BeginTooltip()
-            imgui.Text('при вводе комадны /org скрипт автоматически выдаст информацию по количеству действий')
+            imgui.Text(u8'при вводе комадны /org скрипт автоматически выдаст информацию по количеству действий')
             imgui.EndTooltip()
         end
     elseif active_tab == 2 then
-        if imgui.Checkbox("Role-Play рация", RPradio) then j.RPradio = RPradio[0] json(jPath).save(j) end
-        if imgui.Checkbox("Role-Play смс", RPsms) then j.RPsms = RPsms[0] json(jPath).save(j) end
-        if imgui.Checkbox("Role-Play финд", RPfind) then j.RPfind = RPfind[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8"Role-Play рация", RPradio) then j.RPradio = RPradio[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8"Role-Play смс", RPsms) then j.RPsms = RPsms[0] json(jPath).save(j) end
+        if imgui.Checkbox(u8"Role-Play финд", RPfind) then j.RPfind = RPfind[0] json(jPath).save(j) end
     elseif active_tab == 3 then
-        imgui.Text('Транспорт')
+        imgui.Text(u8'Транспорт')
     elseif active_tab == 4 then
-        if imgui.CollapsingHeader(faicons('book') .. 'Список команд и функций') then
-            imgui.Text(faicons('inbox') .. " Общее")
-            imgui.Text("/mh - меню скрипта")
-            imgui.Text("/medhelp [id] [price] - вылечить пациента (по RP)")
-            imgui.Text("/drone - включить/выключить дрон (CamHack, свободный полет)")
-            imgui.Text("/his [id] - fast history по id игрока")
-            imgui.Text("/isp [id] - поиск отчета игрока по id")
-            imgui.Text("/rec [sec] - переподключение к серверу (sec = 15 если не выставлено)")
-            imgui.Text(faicons('comments') .. " Коммуникация")
-            imgui.Text("/rn [text] - отправить ООС сообщение в рацию подразделения (добавятся ООС скобки)")
-            imgui.Text("/fn [text]- отправить ООС сообщение в рацию организации (добавятся ООС скобки)")
-            imgui.Text("/sms [text] - отправить сообщение последнему собеседнику sms (без указания номера)")
-            imgui.Text(faicons('house') .. " Поиск домов")
-            imgui.Text("/fh [number] - поставить метку на дом по его номеру")
-            imgui.Text("/rm - убрать метку с дома")
+        if imgui.CollapsingHeader(faicons('book') .. u8'Список команд и функций') then
+            imgui.Text(faicons('inbox') .. u8" Общее")
+            imgui.Text(u8"/mh - меню скрипта")
+            imgui.Text(u8"/medhelp [id] [price] - вылечить пациента (по RP)")
+            imgui.Text(u8"/drone - включить/выключить дрон (CamHack, свободный полет)")
+            imgui.Text(u8"/his [id] - fast history по id игрока")
+            imgui.Text(u8"/isp [id] - поиск отчета игрока по id")
+            imgui.Text(u8"/rec [sec] - переподключение к серверу (sec = 15 если не выставлено)")
+            imgui.Text(faicons('comments') .. u8" Коммуникация")
+            imgui.Text(u8"/rn [text] - отправить ООС сообщение в рацию подразделения (добавятся ООС скобки)")
+            imgui.Text(u8"/fn [text]- отправить ООС сообщение в рацию организации (добавятся ООС скобки)")
+            imgui.Text(u8"/sms [text] - отправить сообщение последнему собеседнику sms (без указания номера)")
+            imgui.Text(faicons('house') .. u8" Поиск домов")
+            imgui.Text(u8"/fh [number] - поставить метку на дом по его номеру")
+            imgui.Text(u8"/rm - убрать метку с дома")
         end
     elseif active_tab == 5 then
         imgui.SetCursorPos(imgui.ImVec2(245, 27))
@@ -724,24 +782,24 @@ imgui.OnFrame(function() return MainMenu[0] end, function(player)
         imgui.PopID()
         imgui.SetCursorPos(imgui.ImVec2(270, 30))
         imgui.TextColored(autoLogin[0] and imgui.ImVec4(0.0, 1.0, 0.0, 1.0) or imgui.ImVec4(1.0, 0.0, 0.0, 1.0), 
-        autoLogin[0] and 'Вкл' or 'Выкл')
+        autoLogin[0] and u8'Вкл' or u8'Выкл')
         imgui.SetCursorPos(imgui.ImVec2(270, 50))
         imgui.TextColored(autoPinCode[0] and imgui.ImVec4(0.0, 1.0, 0.0, 1.0) or imgui.ImVec4(1.0, 0.0, 0.0, 1.0), 
-        autoPinCode[0] and 'Вкл' or 'Выкл')
+        autoPinCode[0] and u8'Вкл' or u8'Выкл')
 
         imgui.SetCursorPos(imgui.ImVec2(245, 50))
         if imgui.Checkbox("", autoPinCode) then j.autoPinCode = autoPinCode[0] json(jPath).save(j) end     
         imgui.SetCursorPos(imgui.ImVec2(10, 10))
-        imgui.TextDisabled('Автоматический ввод')
+        imgui.TextDisabled(u8'Автоматический ввод')
         imgui.PushItemWidth(180)
-        if imgui.InputTextWithHint('Пароль', 'Введите ваш пароль', Parol, 256) then 
+        if imgui.InputTextWithHint(u8'Пароль', u8'Введите ваш пароль', Parol, 256) then 
              if autoLogin[0] then
-                j.parol = :decode(ffi.string(Parol)) json(jPath).save(j) 
+                j.parol = u8:decode(ffi.string(Parol)) json(jPath).save(j) 
             end
         end
-        if imgui.InputTextWithHint('Пин-код', 'Введите ваш пинкод банка', PinCode, 256) then
+        if imgui.InputTextWithHint(u8'Пин-код', u8'Введите ваш пинкод банка', PinCode, 256) then
             if autoPinCode[0] then
-                j.pincode = :decode(ffi.string(PinCode)) json(jPath).save(j) 
+                j.pincode = u8:decode(ffi.string(PinCode)) json(jPath).save(j) 
             end
         end
         imgui.PopItemWidth()
@@ -753,82 +811,80 @@ end)
 
 imgui.OnFrame(function() return sett[0] end, function()
     local X, Y = getScreenResolution()
-    imgui.SetNextWindowSize(imgui.ImVec2(300, 100), imgui.Cond.FirstUseEver)
+    imgui.SetNextWindowSize(imgui.ImVec2(300, 200), imgui.Cond.FirstUseEver)
     imgui.SetNextWindowPos(imgui.ImVec2(X / 2 - 200, Y / 2 - 139), imgui.Cond.FirstUseEver)
-    if imgui.Begin('Окно а хули не окно?', sett, imgui.Cond.FirstUseEver) then
+    if imgui.Begin(u8'Меню взаимодействий', sett, imgui.Cond.FirstUseEver) then
         darkStyle()
         imgui.Separator()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 120)
-        imgui.Text('Общее')
-        if imgui.Button('Вылечить от ангины', imgui.ImVec2(-1, 0)) then
+        imgui.Text(u8'Общее')
+        if imgui.Button(u8'Вылечить от ангины', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
-                sampSendChat(u8'/do На плечах висит рюкзак.')
-                wait(900)
-                sampSendChat(u8'/me снял рюкзак, открыл его и достал форму и бейджик')
-                wait(900)
-                sampSendChat(u8'/me передал вещи ' .. targetPlayerNickname)
-                wait(900)
-                sampSendChat(u8'/changeskin ' .. targetPlayerId)
-                wait(900)
-                sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи')
+            nick = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))):gsub("_", " ") -- "_" на " " в нике чтоб без мг
+        
+            sampSendChat(string.format("Здравствуйте, я Ваш лечащий врач %s. Что Вас беспокоит?", nick))
+            wait(1000)
+            sampAddChatMessage('{FF1493}[Med Helper]: {FFFFFF}Нажмите {FF1493}F3 {FFFFFF}для продолжения или {FF1493}F1 {FFFFFF}для отмены.', 0xFF1493)
+            playerId = targetPlayerId
+            RPHeal = true
             end)
         end
         imgui.Separator()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 120)
-        imgui.Text('Лидерам')
-        if imgui.Button('Поменять форму', imgui.ImVec2(-1, 0)) then
+        imgui.Text(u8'Лидерам')
+        if imgui.Button(u8'Поменять форму', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
-                sampSendChat(u8'/do На плечах висит рюкзак.')
+                sampSendChat('/do На плечах висит рюкзак.')
                 wait(900)
-                sampSendChat(u8'/me снял рюкзак, открыл его и достал форму и бейджик')
+                sampSendChat('/me снял рюкзак, открыл его и достал форму и бейджик')
                 wait(900)
-                sampSendChat(u8'/me передал вещи ' .. targetPlayerNickname)
+                sampSendChat('/me передал вещи ' .. targetPlayerNickname)
                 wait(900)
                 sampSendChat('/changeskin ' .. targetPlayerId)
                 wait(900)
-                sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи')
+                sampSendChat('/me закрыл рюкзак и повесил его обратно на плечи')
             end)
         end
     
-        if imgui.Button('Принять в организацию', imgui.ImVec2(-1, 0)) then
+        if imgui.Button(u8'Принять в организацию', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
-                sampSendChat(u8'/do На плечах висит рюкзак.')
+                sampSendChat('/do На плечах висит рюкзак.')
                 wait(900)
-                sampSendChat(u8'/me снял рюкзак, открыл его и достал форму и бейджик')
+                sampSendChat('/me снял рюкзак, открыл его и достал форму и бейджик')
                 wait(900)
-                sampSendChat(u8'/me передал вещи ' .. targetPlayerNickname)
+                sampSendChat('/me передал вещи ' .. targetPlayerNickname)
                 wait(900)
-                sampSendChat(u8'/invite ' .. targetPlayerId)
+                sampSendChat('/invite ' .. targetPlayerId)
                 wait(900)
-                sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи')
+                sampSendChat('/me закрыл рюкзак и повесил его обратно на плечи')
             end)
         end
     
-        if imgui.Button('Повысить ранг', imgui.ImVec2(-1, 0)) then
+        if imgui.Button(u8'Повысить ранг', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
-                sampSendChat(u8'/do Новый бейджик сотрудника в правом кармане.')
+                sampSendChat('/do Новый бейджик сотрудника в правом кармане.')
                 wait(900)
-                sampSendChat(u8'/me достал новый бейджик из кармана')
+                sampSendChat('/me достал новый бейджик из кармана')
                 wait(900)
-                sampSendChat(u8'/me передал его сотруднику ' .. targetPlayerNickname)
+                sampSendChat('/me передал его сотруднику ' .. targetPlayerNickname)
                 wait(900)
-                sampSendChat(u8'/rang ' .. targetPlayerId .. ' +')
+                sampSendChat('/rang ' .. targetPlayerId .. ' +')
                 wait(900)
-                sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи')
+                sampSendChat('/me закрыл рюкзак и повесил его обратно на плечи')
             end)
         end
     
-        if imgui.Button('Понизить ранг', imgui.ImVec2(-1, 0)) then
+        if imgui.Button(u8'Понизить ранг', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
-                sampSendChat(u8'/do Новый бейджик сотрудника в правом кармане.')
+                sampSendChat('/do Новый бейджик сотрудника в правом кармане.')
                 wait(900)
-                sampSendChat(u8'/me достал новый бейджик из кармана')
+                sampSendChat('/me достал новый бейджик из кармана')
                 wait(900)
-                sampSendChat(u8'/me передал его сотруднику ' .. targetPlayerNickname)
+                sampSendChat('/me передал его сотруднику ' .. targetPlayerNickname)
                 wait(900)
-                sampSendChat(u8'/rang ' .. targetPlayerId .. ' -')
+                sampSendChat('/rang ' .. targetPlayerId .. ' -')
                 wait(900)
-                sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи')
+                sampSendChat('/me закрыл рюкзак и повесил его обратно на плечи')
             end)
         end
         imgui.SameLine()
@@ -853,7 +909,7 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
 
     darkStyle()
 
-    imgui.Begin("Добавление новости", showGnewsWindow)
+    imgui.Begin(u8"Добавление новости", showGnewsWindow)
         imgui.InputTextWithHint('##gnewsInput1', 'Введите первую новость', inputGnewsText1, 256)
         imgui.InputTextWithHint('##gnewsInput2', 'Введите вторую новость', inputGnewsText2, 256)
         imgui.InputTextWithHint('##gnewsInput3', 'Введите третью новость', inputGnewsText3, 256)
@@ -874,20 +930,20 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
                 targetHour = (currentTime.hour + 1) % 24
             end
 
-            confirmationMessage = string.format("Новость будет отправлена в %02d:%02d", targetHour, targetMinute)
-            imgui.Text((confirmationMessage))
+            confirmationMessage = string.format(u8"Новость будет отправлена в %02d:%02d", targetHour, targetMinute)
+            imgui.Text(u8(confirmationMessage))
         end
 
-        if imgui.Button("Отправить", imgui.ImVec2(-1, 0)) then
-            local news1 = :decode(ffi.string(inputGnewsText1))
-            local news2 = :decode(ffi.string(inputGnewsText2))
-            local news3 = u8:decode(ffi.string(inputGnewsText3))
+        if imgui.Button(u8"Отправить", imgui.ImVec2(-1, 0)) then
+            local news1 = (ffi.string(inputGnewsText1))
+            local news2 = (ffi.string(inputGnewsText2))
+            local news3 = (ffi.string(inputGnewsText3))
 
             showGnewsWindow[0] = false
 
             -- Проверка на 2 строки (запрещено)
             if (news1 ~= '' and news2 ~= '') and news3 == '' then
-                sampAddChatMessage('Вы не можете отправить 2 строки новости. Только 1 или 3', -2)
+                sampAddChatMessage(u8'Вы не можете отправить 2 строки новости. Только 1 или 3', -2)
                 return
             end  
 
@@ -907,9 +963,9 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
             end
 
             if newsCount == 1 then
-                sendMessage = sendAtTime[0] and string.format("в %02d:%02d кину одну", sendHour, sendMinute) or "кину одну"
+                sendMessage = sendAtTime[0] and string.format(u8"в %02d:%02d кину одну", sendHour, sendMinute) or "кину одну"
             elseif newsCount == 3 then
-                sendMessage = sendAtTime[0] and string.format("в %02d:%02d кину три", sendHour, sendMinute) or "кину три"
+                sendMessage = sendAtTime[0] and string.format(u8"в %02d:%02d кину три", sendHour, sendMinute) or "кину три"
             end
 
             lua_thread.create(function()
@@ -936,25 +992,35 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
                 end
 
                 if news1 and news1 ~= '' then
-                    sampAddChatMessage("/gnews " .. news1)
+                    sampAddChatMessage(u8"/gnews " .. news1)
                     wait(900)
                 end
                 if news2 and news2 ~= '' then
-                    sampAddChatMessage("/gnews " .. news2)
+                    sampAddChatMessage(u8"/gnews " .. news2)
                     wait(900)
                 end
                 if news3 and news3 ~= '' then
-                    sampAddChatMessage("/gnews " .. news3)
+                    sampAddChatMessage(u8"/gnews " .. news3)
                     wait(900)
                 end              
             end)
         end
 
-        if imgui.CollapsingHeader('Отправка по шаблонам') then
-            if imgui.Button('Собеседование (начало-БЛС)', imgui.ImVec2(400, 0)) then
-                inputGnewsText1 = ffi.new("char[?]", #('Уважаемые жители, минуточку внимания!') + 1, 'Уважаемые жители, минуточку внимания!')
-                inputGnewsText2 = ffi.new("char[?]", #('Сейчас пройдет собеседование в Больницу ш. Los-Santos.') + 1, 'Сейчас пройдет собеседование в Больницу ш. Los-Santos.')
-                inputGnewsText3 = ffi.new("char[?]", #('Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12') + 1, 'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12')
+        if imgui.CollapsingHeader(u8'Отправка по шаблонам') then
+            if imgui.Button(u8'Собеседование (начало-БЛС)', imgui.ImVec2(400, 0)) then
+                inputGnewsText1 = ffi.new("char[?]", #(u8'Уважаемые жители, минуточку внимания!') + 1, u8'Уважаемые жители, минуточку внимания!')
+                inputGnewsText2 = ffi.new("char[?]", #(u8'Сейчас пройдет собеседование в Больницу ш. Los-Santos.') + 1, u8'Сейчас пройдет собеседование в Больницу ш. Los-Santos.')
+                inputGnewsText3 = ffi.new("char[?]", #(u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12') + 1, u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12')
+            end
+            if imgui.Button(u8'Собеседование (начало-БСФ)', imgui.ImVec2(400, 0)) then
+                inputGnewsText1 = ffi.new("char[?]", #(u8'Уважаемые жители, минуточку внимания!') + 1, u8'Уважаемые жители, минуточку внимания!')
+                inputGnewsText2 = ffi.new("char[?]", #(u8'Сейчас пройдет собеседование в Больницу ш. San-Fierro') + 1, u8'Сейчас пройдет собеседование в Больницу ш. San-Fierro.')
+                inputGnewsText3 = ffi.new("char[?]", #(u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-13') + 1, u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-13')
+            end
+            if imgui.Button(u8'Собеседование (начало-БЛВ)', imgui.ImVec2(400, 0)) then
+                inputGnewsText1 = ffi.new("char[?]", #(u8'Уважаемые жители, минуточку внимания!') + 1, u8'Уважаемые жители, минуточку внимания!')
+                inputGnewsText2 = ffi.new("char[?]", #(u8'Сейчас пройдет собеседование в Больницу ш. Las-Venturas.') + 1, u8'Сейчас пройдет собеседование в Больницу ш. Las-Venturas.')
+                inputGnewsText3 = ffi.new("char[?]", #(u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-14') + 1, u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-14')
             end
         end
 
@@ -981,7 +1047,7 @@ function cmd_medhelp(args)
         end
 
         if #inputs ~= 2 then
-            sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Неправильный формат команды. Используйте: {FF1493}/medhelp [id] [цена].", 0xFF1493)
+            sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Неправильный формат команды. Используйте: {FF1493}/medhelp [id] [цена].", 0xFF1493)
             return
         end
 
@@ -992,14 +1058,14 @@ function cmd_medhelp(args)
             local playerName = getPlayerName(playerId)
             nick = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))):gsub("_", " ") -- "_" на " " в нике чтоб без мг
         
-            sampSendChat(string.format(u8"Здравствуйте, я Ваш лечащий врач %s. Что Вас беспокоит?", nick))
+            sampSendChat(string.format("Здравствуйте, я Ваш лечащий врач %s. Что Вас беспокоит?", nick))
             wait(1000)
-            sampAddChatMessage(u8'{FF1493}[Med Helper]: {FFFFFF}Нажмите {FF1493}F3 {FFFFFF}для продолжения или {FF1493}F1 {FFFFFF}для отмены.', 0xFF1493)
+            sampAddChatMessage('{FF1493}[Med Helper]: {FFFFFF}Нажмите {FF1493}F3 {FFFFFF}для продолжения или {FF1493}F1 {FFFFFF}для отмены.', 0xFF1493)
 
             RPHeal = true
 
         else
-            sampSendChat(u8"{FF1493}[Med Helper]: {FFFFFF}ID должен быть числовым и в пределах допустимых значений (0-999).", 0xFF1493)
+            sampSendChat("{FF1493}[Med Helper]: {FFFFFF}ID должен быть числовым и в пределах допустимых значений (0-999).", 0xFF1493)
         end
     end)
 end
@@ -1008,14 +1074,14 @@ function fastHistory(playerId)
     local id = tonumber(playerId)
     
     if id == nil or id <= 0 or id >=1000 then
-        sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Укажите корректный {FF1493}ID {FFFFFF}игрока! {FF1493}(от 0 до 1000)', 0xFF1493)
+        sampAddChatMessage('[Med Helper]: {FFFFFF}Укажите корректный {FF1493}ID {FFFFFF}игрока! {FF1493}(от 0 до 1000)', 0xFF1493)
         return
     end
 
     local nickname = sampGetPlayerNickname(id)
 
     if nickname == nil or nickname == '' then
-        sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Игрок с таким {FF1493}ID {FFFFFF}не найден!', 0xFF1493)
+        sampAddChatMessage('[Med Helper]: {FFFFFF}Игрок с таким {FF1493}ID {FFFFFF}не найден!', 0xFF1493)
         return
     end
 
@@ -1076,26 +1142,26 @@ end
 
 function rm()
 	removeBlip(marker)
-	sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Метка на дом {FF0000}Убрана", 0xFF1493)
+	sampAddChatMessage("[Med Helper]: {FFFFFF}Метка на дом {FF0000}Убрана", 0xFF1493)
 end
 
 function fh(num)
 	if #num == 0 then
-		sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Укажите номер дома: {FF1493}/fh [house id]", 0xFF1493)
+		sampAddChatMessage("[Med Helper]: {FFFFFF}Укажите номер дома: {FF1493}/fh [house id]", 0xFF1493)
 	else
 		local id = tonumber(num)
 		if not id then
-			sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Ввдите корректный номер дома {FF1493}Без символов и букв", 0xFF1493)
+			sampAddChatMessage("[Med Helper]: {FFFFFF}Ввдите корректный номер дома {FF1493}Без символов и букв", 0xFF1493)
 			return false
 		end
 		if not ini[id] then
-			sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Указанного дома нет/Координат этого дома нет в файле {FF1493}house.ini", 0xFF1493)
+			sampAddChatMessage("[Med Helper]: {FFFFFF}Указанного дома нет/Координат этого дома нет в файле {FF1493}house.ini", 0xFF1493)
 			return false
 		else
 			if marker then
 				removeBlip(marker)	
 			end
-			sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Метка на дом {00FF00}поставлена", 0xFF1493)
+			sampAddChatMessage("[Med Helper]: {FFFFFF}Метка на дом {00FF00}поставлена", 0xFF1493)
 			marker = addBlipForCoord(ini[id].x, ini[id].y, ini[id].z)
 			changeBlipScale(marker, 3) --Размер метки
 			changeBlipColour(marker, 0xFF00FFFF) --Цвет метки
@@ -1121,6 +1187,7 @@ function onScriptTerminate(script, exit)
 	end
 end
 
+
 function main()
     while not isSampAvailable() do
         wait(100)
@@ -1128,11 +1195,11 @@ function main()
 
     sampSendChat('/st')
 
-    sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Med Helper обновлен успешно! Версия {FF1493}1.0', 0xFF1493)
+    sampAddChatMessage('[Med Helper]: {FFFFFF}Med Helper запущен успешно! Версия {FF1493}1.0', 0xFF1493)
     sampRegisterChatCommand("medhelp", cmd_medhelp)
     sampRegisterChatCommand('mh', function() MainMenu[0] = not MainMenu[0] end)
     sampRegisterChatCommand('gmenu', function()
-        if rank ~= 10 then sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Данная функция доступна только лидерам', 0xFF1493) return end
+        if rank ~= 10 then sampAddChatMessage('[Med Helper]: {FFFFFF}Данная функция доступна только лидерам', 0xFF1493) return end
         showGnewsWindow[0] = not showGnewsWindow[0]
     end)
     
@@ -1144,7 +1211,7 @@ function main()
     sampRegisterChatCommand('sms', sms)
     sampRegisterChatCommand('drone', OnDrone)
     sampRegisterChatCommand('fh', fh)
-    sampRegisterChatCommand('rm', rm)
+	sampRegisterChatCommand('rm', rm)
     sampRegisterChatCommand('find', find)
     sampRegisterChatCommand('isp', isp)
     sampRegisterChatCommand('drive', drive)
@@ -1155,11 +1222,15 @@ function main()
     sampRegisterChatCommand('org', org)
     sampRegisterChatCommand('his', fastHistory)
     sampRegisterChatCommand('analysis', dis)
+    
+    sampRegisterChatCommand('invite', cmd_invite)
+    sampRegisterChatCommand('uninvite', cmd_uninvite)
+    sampRegisterChatCommand('changeskin', cmd_changeskin)
 
     sampRegisterChatCommand('rec', reconnect)
     if not doesFileExist("moonloader/config/houses.ini") then
 
-        sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Нет файла {FF1493}houses.ini в папке moonloader/config!", 0xFF1493)
+        sampAddChatMessage("[Med Helper]: {FFFFFF}Нет файла {FF1493}houses.ini в папке moonloader/config!", 0xFF1493)
     else
         ini = inicfg.load({}, 'moonloader/config/houses.ini')
     end
@@ -1167,6 +1238,8 @@ function main()
     drone = 0  
     speed = 1.0
     angZ, angY, posX, posY, posZ = 0.0, 0.0, 0.0, 0.0, 0.0
+
+    autoupdate("https://github.com/w99zzl1/MedHelper/raw/refs/heads/main/update.json", '['..string.upper(thisScript().name)..']: ', "https://github.com/w99zzl1/MedHelper/raw/refs/heads/main/MedHelper.lua")
 
     while true do
         wait(0)
@@ -1197,17 +1270,17 @@ function main()
         end
 
         if RPHeal and isKeyJustPressed(VK_F3) then
-            sampSendChat(u8"/me выслушал пациента и поставил ему диагноз")
+            sampSendChat("/me выслушал пациента и поставил ему диагноз")
             wait(1000)
-            sampSendChat(u8"/do Через плечо надета медицинская сумка.")
+            sampSendChat("/do Через плечо надета медицинская сумка.")
             wait(1000)
-            sampSendChat(u8"/me правой рукой залез в сумку и достал нужный препарат")
+            sampSendChat("/me правой рукой залез в сумку и достал нужный препарат")
             wait(1000)
-            sampSendChat(u8"/me легким движением руки передал препарат пациенту")
+            sampSendChat("/me легким движением руки передал препарат пациенту")
             wait(100)
             sampSendChat(string.format("/medhelp %d %s", playerId, price))
             wait(3000)
-            sampSendChat(u8"Всего доброго! Не болейте больше.")
+            sampSendChat("Всего доброго! Не болейте больше.")
             RPHeal = false
         end
         if RPHeal and isKeyJustPressed(VK_F1) then
@@ -1216,54 +1289,54 @@ function main()
 
         if illines1 and disID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
+            sampSendChat(string.format('/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
             illines1 = false
         end
         if illines2 and disID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
+            sampSendChat(string.format('/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
             illines2 = false
         end
         if illines3 and disID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
+            sampSendChat(string.format('/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
             illines3 = false
         end
         if illines4 and disID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
+            sampSendChat(string.format('/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
             illines4 = false
         end
         if illines5 and disID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
+            sampSendChat(string.format('/me выписал пациенту %s свечи от геморроя и направил на процедуру', disID))
             illines5 = false
         end
 
         
         if analys1 and analysID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал пациенту %s свечи от геморроя и направил на процедуру', analysID))
+            sampSendChat(string.format('/me выписал пациенту %s свечи от геморроя и направил на процедуру', analysID))
             analys1 = false
         end
         if analys1 and analysID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал %s направление на прохождение анализа крови', analysID))
+            sampSendChat(string.format('/me выписал %s направление на прохождение анализа крови', analysID))
             analys1 = false
         end
         if analys2 and analysID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал %s направление на прохождение анализа мочи', analysID))
+            sampSendChat(string.format('/me выписал %s направление на прохождение анализа мочи', analysID))
             analys2 = false
         end
         if analys3 and analysID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал %s направление на прохождение КТ', analysID))
+            sampSendChat(string.format('/me выписал %s направление на прохождение КТ', analysID))
             analys3 = false
         end
         if analys4 and analysID ~= "" then
             wait(100)
-            sampSendChat(string.format(u8'/me выписал %s направление на прохождение МРТ', analysID))
+            sampSendChat(string.format('/me выписал %s направление на прохождение МРТ', analysID))
             analys4 = false
         end
         
@@ -1311,7 +1384,7 @@ end
 
 function isp(nickname)
     if not nickname or nickname == "" then
-        sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Использование: {FF1493}/isp [nickname]", 0xFF1493)
+        sampAddChatMessage("[Med Helper]: {FFFFFF}Использование: {FF1493}/isp [nickname]", 0xFF1493)
         return
     else
         nicknameIsp = nickname
@@ -1344,9 +1417,9 @@ function checkPlayerPickupProximity()
 end
 
 function notifyPlayer()
-    sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Уважаемый игрок! Помните, что игра в казино в рабочее время может быть наказуема в...", 0xFF1493)
-    sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}...IC-формате (или администрацией, если вы лидер). Кроме того, помните, что вы можете потерять все свои сбережения!", 0xFF1493)
-    sampAddChatMessage(u8"{FF1493}[Med Helper]: {FFFFFF}Играйте с умом и не делайте необдуманных ставок. Мы категорически против казино!", 0xFF1493)
+    sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Уважаемый игрок! Помните, что игра в казино в рабочее время может быть наказуема в...", 0xFF1493)
+    sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}...IC-формате (или администрацией, если вы лидер). Кроме того, помните, что вы можете потерять все свои сбережения!", 0xFF1493)
+    sampAddChatMessage("{FF1493}[Med Helper]: {FFFFFF}Играйте с умом и не делайте необдуманных ставок. Мы категорически против казино!", 0xFF1493)
     CASINOnotify = true
 end
 
@@ -1447,7 +1520,7 @@ function OnDrone()
         setFixedCameraPosition(posX, posY, posZ, 0.0, 0.0, 0.0)
         lockPlayerControl(true)
         drone = 1
-        sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Режим дрона активирован. {FF1493}Enter {FFFFFF}чтобы выйти, {FF1493}+/- {FFFFFF}скорость", 0xFF1493)
+        sampAddChatMessage("[Med Helper]: {FFFFFF}Режим дрона активирован. {FF1493}Enter {FFFFFF}чтобы выйти, {FF1493}+/- {FFFFFF}скорость", 0xFF1493)
     else
         OffDrone()
     end
@@ -1542,5 +1615,107 @@ function OffDrone()
     restoreCameraJumpcut()
     setCameraBehindPlayer()
     drone = 0
-    sampAddChatMessage(u8"[Med Helper]: {FFFFFF}Режим дрона отключён.", 0xFF1493)
+    sampAddChatMessage("[Med Helper]: {FFFFFF}Режим дрона отключён.", 0xFF1493)
+end
+
+--
+--     _   _   _ _____ ___  _   _ ____  ____    _  _____ _____   ______   __   ___  ____  _     _  __
+--    / \ | | | |_   _/ _ \| | | |  _ \|  _ \  / \|_   _| ____| | __ ) \ / /  / _ \|  _ \| |   | |/ /
+--   / _ \| | | | | || | | | | | | |_) | | | |/ _ \ | | |  _|   |  _ \\ V /  | | | | |_) | |   | ' /
+--  / ___ \ |_| | | || |_| | |_| |  __/| |_| / ___ \| | | |___  | |_) || |   | |_| |  _ <| |___| . \
+-- /_/   \_\___/  |_| \___/ \___/|_|   |____/_/   \_\_| |_____| |____/ |_|    \__\_\_| \_\_____|_|\_\                                                                                                                                                                                                                
+--
+-- Author: http://qrlk.me/samp
+--
+function autoupdate(json_url, prefix, url)
+  local dlstatus = require('moonloader').download_status
+  local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
+  if doesFileExist(json) then os.remove(json) end
+  downloadUrlToFile(json_url, json,
+    function(id, status, p1, p2)
+      if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+        if doesFileExist(json) then
+          local f = io.open(json, 'r')
+          if f then
+            local info = decodeJson(f:read('*a'))
+            updatelink = info.updateurl
+            updateversion = info.latest
+            print(info.updateurl)
+            f:close()
+            os.remove(json)
+            if updateversion ~= thisScript().version then
+              lua_thread.create(function(prefix)
+                local dlstatus = require('moonloader').download_status
+                local color = -1
+                sampAddChatMessage((prefix..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), color)
+                wait(250)
+                downloadUrlToFile(updatelink, thisScript().path,
+                  function(id3, status1, p13, p23)
+                    if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
+                      print(string.format('Загружено %d из %d.', p13, p23))
+                    elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
+                      print('Загрузка обновления завершена.')
+                      sampAddChatMessage((prefix..'Обновление завершено!'), color)
+                      goupdatestatus = true
+                      lua_thread.create(function() wait(500) thisScript():reload() end)
+                    end
+                    if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
+                      if goupdatestatus == nil then
+                        sampAddChatMessage((prefix..'Обновление прошло неудачно. Запускаю устаревшую версию..'), color)
+                        update = false
+                      end
+                    end
+                  end
+                )
+                end, prefix
+              )
+            else
+              update = false
+              print('v'..thisScript().version..': Обновление не требуется.')
+            end
+          end
+        else
+          print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
+          update = false
+        end
+      end
+    end
+  )
+  while update ~= false do wait(100) end
+end            local color = -1
+                sampAddChatMessage((prefix..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), color)
+                wait(250)
+                downloadUrlToFile(updatelink, thisScript().path,
+                  function(id3, status1, p13, p23)
+                    if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
+                      print(string.format('Загружено %d из %d.', p13, p23))
+                    elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
+                      print('Загрузка обновления завершена.')
+                      sampAddChatMessage((prefix..'Обновление завершено!'), color)
+                      goupdatestatus = true
+                      lua_thread.create(function() wait(500) thisScript():reload() end)
+                    end
+                    if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
+                      if goupdatestatus == nil then
+                        sampAddChatMessage((prefix..'Обновление прошло неудачно. Запускаю устаревшую версию..'), color)
+                        update = false
+                      end
+                    end
+                  end
+                )
+                end, prefix
+              )
+            else
+              update = false
+              print('v'..thisScript().version..': Обновление не требуется.')
+            end
+          end
+        else
+          print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
+          update = false
+        end
+      end
+    end
+  )
+  while update ~= false do wait(100) end
 end
