@@ -1128,7 +1128,7 @@ function main()
 
     sampSendChat('/st')
 
-    sampAddChatMessage(u8u8'[Med Helper]: {FFFFFF}Med Helper обновлен успешно! Версия {FF1493}1.0', 0xFF1493)
+    sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Med Helper обновлен успешно! Версия {FF1493}1.0', 0xFF1493)
     sampRegisterChatCommand("medhelp", cmd_medhelp)
     sampRegisterChatCommand('mh', function() MainMenu[0] = not MainMenu[0] end)
     sampRegisterChatCommand('gmenu', function()
