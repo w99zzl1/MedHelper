@@ -1,5 +1,5 @@
 script_name("Med Helper")
-script_version_number("1.0")
+script_version_number("02.04.2025")
 script_description("Universal helper for the Samp Advance RP Family")
 script_author("Arseniy Samsonov")
 
