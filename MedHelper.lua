@@ -643,11 +643,11 @@ imgui.OnFrame(function() return MainMenu[0] end, function(player)
     imgui.BeginChild('LeftPanel', imgui.ImVec2(150, 0), true)
 
     local tabs = {
-        {id = 1, label = faicons('users') .. u8' Общее'},
-        {id = 2, label = faicons('spinner') .. u8' Авто-отыгровки'},
-        {id = 3, label = faicons('car') .. u8' Транспорт'},
-        {id = 4, label = faicons('receipt') .. u8' Справочник'},
-        {id = 5, label = faicons('gear') .. u8' Настройки'},
+        {id = 1, label = faicons('users') .. ' Общее'},
+        {id = 2, label = faicons('spinner') .. ' Авто-отыгровки'},
+        {id = 3, label = faicons('car') .. ' Транспорт'},
+        {id = 4, label = faicons('receipt') .. ' Справочник'},
+        {id = 5, label = faicons('gear') .. ' Настройки'},
     }
 
     for _, tab in ipairs(tabs) do
@@ -675,48 +675,48 @@ imgui.OnFrame(function() return MainMenu[0] end, function(player)
     imgui.BeginChild('RightPanel', imgui.ImVec2(0, 0), true)
 
     if active_tab == 1 then
-        if imgui.Checkbox(u8"Не в организации", noneOrg) then j.noneOrg = noneOrg[0] json(jPath).save(j) end
+        if imgui.Checkbox("Не в организации", noneOrg) then j.noneOrg = noneOrg[0] json(jPath).save(j) end
         imgui.SameLine()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 3) -- Смещаем иконку вправо на 3 пикселя
         imgui.Text(faicons('question'))
         if imgui.IsItemHovered() then
             imgui.BeginTooltip()
-            imgui.Text(u8'при использовании команды /fn в чат не будет отправлятся лишняя "1", если вы не устроены в мэрии')
+            imgui.Text('при использовании команды /fn в чат не будет отправлятся лишняя "1", если вы не устроены в мэрии')
             imgui.EndTooltip()
         end
-        if imgui.Checkbox(u8'Чат на T', openChatT) then j.openChatT = openChatT[0] json(jPath).save(j) end
-        if imgui.Checkbox(u8'Cruise Control', cruiseControl) then j.cruiseControl = cruiseControl[0] json(jPath).save(j) end
-        if imgui.Checkbox(u8'Автоотчет', autoORG) then j.autoORG = autoORG[0] json(jPath).save(j) end
+        if imgui.Checkbox('Чат на T', openChatT) then j.openChatT = openChatT[0] json(jPath).save(j) end
+        if imgui.Checkbox('Cruise Control', cruiseControl) then j.cruiseControl = cruiseControl[0] json(jPath).save(j) end
+        if imgui.Checkbox('Автоотчет', autoORG) then j.autoORG = autoORG[0] json(jPath).save(j) end
         imgui.SameLine()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 3) -- Смещаем иконку вправо на 3 пикселя
         imgui.Text(faicons('question'))
         if imgui.IsItemHovered() then
             imgui.BeginTooltip()
-            imgui.Text(u8'при вводе комадны /org скрипт автоматически выдаст информацию по количеству действий')
+            imgui.Text('при вводе комадны /org скрипт автоматически выдаст информацию по количеству действий')
             imgui.EndTooltip()
         end
     elseif active_tab == 2 then
-        if imgui.Checkbox(u8"Role-Play рация", RPradio) then j.RPradio = RPradio[0] json(jPath).save(j) end
-        if imgui.Checkbox(u8"Role-Play смс", RPsms) then j.RPsms = RPsms[0] json(jPath).save(j) end
-        if imgui.Checkbox(u8"Role-Play финд", RPfind) then j.RPfind = RPfind[0] json(jPath).save(j) end
+        if imgui.Checkbox("Role-Play рация", RPradio) then j.RPradio = RPradio[0] json(jPath).save(j) end
+        if imgui.Checkbox("Role-Play смс", RPsms) then j.RPsms = RPsms[0] json(jPath).save(j) end
+        if imgui.Checkbox("Role-Play финд", RPfind) then j.RPfind = RPfind[0] json(jPath).save(j) end
     elseif active_tab == 3 then
-        imgui.Text(u8'Транспорт')
+        imgui.Text('Транспорт')
     elseif active_tab == 4 then
-        if imgui.CollapsingHeader(faicons('book') .. u8'Список команд и функций') then
-            imgui.Text(faicons('inbox') .. u8" Общее")
-            imgui.Text(u8"/mh - меню скрипта")
-            imgui.Text(u8"/medhelp [id] [price] - вылечить пациента (по RP)")
-            imgui.Text(u8"/drone - включить/выключить дрон (CamHack, свободный полет)")
-            imgui.Text(u8"/his [id] - fast history по id игрока")
-            imgui.Text(u8"/isp [id] - поиск отчета игрока по id")
-            imgui.Text(u8"/rec [sec] - переподключение к серверу (sec = 15 если не выставлено)")
-            imgui.Text(faicons('comments') .. u8" Коммуникация")
-            imgui.Text(u8"/rn [text] - отправить ООС сообщение в рацию подразделения (добавятся ООС скобки)")
-            imgui.Text(u8"/fn [text]- отправить ООС сообщение в рацию организации (добавятся ООС скобки)")
-            imgui.Text(u8"/sms [text] - отправить сообщение последнему собеседнику sms (без указания номера)")
-            imgui.Text(faicons('house') .. u8" Поиск домов")
-            imgui.Text(u8"/fh [number] - поставить метку на дом по его номеру")
-            imgui.Text(u8"/rm - убрать метку с дома")
+        if imgui.CollapsingHeader(faicons('book') .. 'Список команд и функций') then
+            imgui.Text(faicons('inbox') .. " Общее")
+            imgui.Text("/mh - меню скрипта")
+            imgui.Text("/medhelp [id] [price] - вылечить пациента (по RP)")
+            imgui.Text("/drone - включить/выключить дрон (CamHack, свободный полет)")
+            imgui.Text("/his [id] - fast history по id игрока")
+            imgui.Text("/isp [id] - поиск отчета игрока по id")
+            imgui.Text("/rec [sec] - переподключение к серверу (sec = 15 если не выставлено)")
+            imgui.Text(faicons('comments') .. " Коммуникация")
+            imgui.Text("/rn [text] - отправить ООС сообщение в рацию подразделения (добавятся ООС скобки)")
+            imgui.Text("/fn [text]- отправить ООС сообщение в рацию организации (добавятся ООС скобки)")
+            imgui.Text("/sms [text] - отправить сообщение последнему собеседнику sms (без указания номера)")
+            imgui.Text(faicons('house') .. " Поиск домов")
+            imgui.Text("/fh [number] - поставить метку на дом по его номеру")
+            imgui.Text("/rm - убрать метку с дома")
         end
     elseif active_tab == 5 then
         imgui.SetCursorPos(imgui.ImVec2(245, 27))
@@ -724,24 +724,24 @@ imgui.OnFrame(function() return MainMenu[0] end, function(player)
         imgui.PopID()
         imgui.SetCursorPos(imgui.ImVec2(270, 30))
         imgui.TextColored(autoLogin[0] and imgui.ImVec4(0.0, 1.0, 0.0, 1.0) or imgui.ImVec4(1.0, 0.0, 0.0, 1.0), 
-        autoLogin[0] and u8'Вкл' or u8'Выкл')
+        autoLogin[0] and 'Вкл' or 'Выкл')
         imgui.SetCursorPos(imgui.ImVec2(270, 50))
         imgui.TextColored(autoPinCode[0] and imgui.ImVec4(0.0, 1.0, 0.0, 1.0) or imgui.ImVec4(1.0, 0.0, 0.0, 1.0), 
-        autoPinCode[0] and u8'Вкл' or u8'Выкл')
+        autoPinCode[0] and 'Вкл' or 'Выкл')
 
         imgui.SetCursorPos(imgui.ImVec2(245, 50))
         if imgui.Checkbox("", autoPinCode) then j.autoPinCode = autoPinCode[0] json(jPath).save(j) end     
         imgui.SetCursorPos(imgui.ImVec2(10, 10))
-        imgui.TextDisabled(u8'Автоматический ввод')
+        imgui.TextDisabled('Автоматический ввод')
         imgui.PushItemWidth(180)
-        if imgui.InputTextWithHint(u8'Пароль', u8'Введите ваш пароль', Parol, 256) then 
+        if imgui.InputTextWithHint('Пароль', 'Введите ваш пароль', Parol, 256) then 
              if autoLogin[0] then
-                j.parol = u8:decode(ffi.string(Parol)) json(jPath).save(j) 
+                j.parol = :decode(ffi.string(Parol)) json(jPath).save(j) 
             end
         end
-        if imgui.InputTextWithHint(u8'Пин-код', u8'Введите ваш пинкод банка', PinCode, 256) then
+        if imgui.InputTextWithHint('Пин-код', 'Введите ваш пинкод банка', PinCode, 256) then
             if autoPinCode[0] then
-                j.pincode = u8:decode(ffi.string(PinCode)) json(jPath).save(j) 
+                j.pincode = :decode(ffi.string(PinCode)) json(jPath).save(j) 
             end
         end
         imgui.PopItemWidth()
@@ -755,12 +755,12 @@ imgui.OnFrame(function() return sett[0] end, function()
     local X, Y = getScreenResolution()
     imgui.SetNextWindowSize(imgui.ImVec2(300, 100), imgui.Cond.FirstUseEver)
     imgui.SetNextWindowPos(imgui.ImVec2(X / 2 - 200, Y / 2 - 139), imgui.Cond.FirstUseEver)
-    if imgui.Begin(u8'Окно а хули не окно?', sett, imgui.Cond.FirstUseEver) then
+    if imgui.Begin('Окно а хули не окно?', sett, imgui.Cond.FirstUseEver) then
         darkStyle()
         imgui.Separator()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 120)
-        imgui.Text(u8'Общее')
-        if imgui.Button(u8'Вылечить от ангины', imgui.ImVec2(-1, 0)) then
+        imgui.Text('Общее')
+        if imgui.Button('Вылечить от ангины', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
                 sampSendChat(u8'/do На плечах висит рюкзак.')
                 wait(900)
@@ -768,15 +768,15 @@ imgui.OnFrame(function() return sett[0] end, function()
                 wait(900)
                 sampSendChat(u8'/me передал вещи ' .. targetPlayerNickname)
                 wait(900)
-                sampSendChat('/changeskin ' .. targetPlayerId)
+                sampSendChat(u8'/changeskin ' .. targetPlayerId)
                 wait(900)
                 sampSendChat(u8'/me закрыл рюкзак и повесил его обратно на плечи')
             end)
         end
         imgui.Separator()
         imgui.SetCursorPosX(imgui.GetCursorPosX() + 120)
-        imgui.Text(u8'Лидерам')
-        if imgui.Button(u8'Поменять форму', imgui.ImVec2(-1, 0)) then
+        imgui.Text('Лидерам')
+        if imgui.Button('Поменять форму', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
                 sampSendChat(u8'/do На плечах висит рюкзак.')
                 wait(900)
@@ -790,7 +790,7 @@ imgui.OnFrame(function() return sett[0] end, function()
             end)
         end
     
-        if imgui.Button(u8'Принять в организацию', imgui.ImVec2(-1, 0)) then
+        if imgui.Button('Принять в организацию', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
                 sampSendChat(u8'/do На плечах висит рюкзак.')
                 wait(900)
@@ -804,7 +804,7 @@ imgui.OnFrame(function() return sett[0] end, function()
             end)
         end
     
-        if imgui.Button(u8'Повысить ранг', imgui.ImVec2(-1, 0)) then
+        if imgui.Button('Повысить ранг', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
                 sampSendChat(u8'/do Новый бейджик сотрудника в правом кармане.')
                 wait(900)
@@ -818,7 +818,7 @@ imgui.OnFrame(function() return sett[0] end, function()
             end)
         end
     
-        if imgui.Button(u8'Понизить ранг', imgui.ImVec2(-1, 0)) then
+        if imgui.Button('Понизить ранг', imgui.ImVec2(-1, 0)) then
             lua_thread.create(function()
                 sampSendChat(u8'/do Новый бейджик сотрудника в правом кармане.')
                 wait(900)
@@ -853,15 +853,15 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
 
     darkStyle()
 
-    imgui.Begin(u8"Добавление новости", showGnewsWindow)
-        imgui.InputTextWithHint(u8'##gnewsInput1', u8'Введите первую новость', inputGnewsText1, 256)
-        imgui.InputTextWithHint(u8'##gnewsInput2', u8'Введите вторую новость', inputGnewsText2, 256)
-        imgui.InputTextWithHint(u8'##gnewsInput3', u8'Введите третью новость', inputGnewsText3, 256)
+    imgui.Begin("Добавление новости", showGnewsWindow)
+        imgui.InputTextWithHint('##gnewsInput1', 'Введите первую новость', inputGnewsText1, 256)
+        imgui.InputTextWithHint('##gnewsInput2', 'Введите вторую новость', inputGnewsText2, 256)
+        imgui.InputTextWithHint('##gnewsInput3', 'Введите третью новость', inputGnewsText3, 256)
 
-        imgui.Checkbox(u8"Отправка по времени", sendAtTime)
+        imgui.Checkbox("Отправка по времени", sendAtTime)
 
         if sendAtTime[0] then
-            imgui.SliderInt(u8"Время (в минутах)", timeDelay, 1, 59)
+            imgui.SliderInt("Время (в минутах)", timeDelay, 1, 59)
         end
 
         if sendAtTime[0] then
@@ -874,20 +874,20 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
                 targetHour = (currentTime.hour + 1) % 24
             end
 
-            confirmationMessage = string.format(u8"Новость будет отправлена в %02d:%02d", targetHour, targetMinute)
-            imgui.Text(u8(confirmationMessage))
+            confirmationMessage = string.format("Новость будет отправлена в %02d:%02d", targetHour, targetMinute)
+            imgui.Text((confirmationMessage))
         end
 
-        if imgui.Button(u8"Отправить", imgui.ImVec2(-1, 0)) then
-            local news1 = u8:decode(ffi.string(inputGnewsText1))
-            local news2 = u8:decode(ffi.string(inputGnewsText2))
+        if imgui.Button("Отправить", imgui.ImVec2(-1, 0)) then
+            local news1 = :decode(ffi.string(inputGnewsText1))
+            local news2 = :decode(ffi.string(inputGnewsText2))
             local news3 = u8:decode(ffi.string(inputGnewsText3))
 
             showGnewsWindow[0] = false
 
             -- Проверка на 2 строки (запрещено)
             if (news1 ~= '' and news2 ~= '') and news3 == '' then
-                sampAddChatMessage(u8'Вы не можете отправить 2 строки новости. Только 1 или 3', -2)
+                sampAddChatMessage('Вы не можете отправить 2 строки новости. Только 1 или 3', -2)
                 return
             end  
 
@@ -907,9 +907,9 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
             end
 
             if newsCount == 1 then
-                sendMessage = sendAtTime[0] and string.format(u8"в %02d:%02d кину одну", sendHour, sendMinute) or "кину одну"
+                sendMessage = sendAtTime[0] and string.format("в %02d:%02d кину одну", sendHour, sendMinute) or "кину одну"
             elseif newsCount == 3 then
-                sendMessage = sendAtTime[0] and string.format(u8"в %02d:%02d кину три", sendHour, sendMinute) or "кину три"
+                sendMessage = sendAtTime[0] and string.format("в %02d:%02d кину три", sendHour, sendMinute) or "кину три"
             end
 
             lua_thread.create(function()
@@ -950,11 +950,11 @@ imgui.OnFrame(function() return showGnewsWindow[0] end, function()
             end)
         end
 
-        if imgui.CollapsingHeader(u8'Отправка по шаблонам') then
-            if imgui.Button(u8'Собеседование (начало-БЛС)', imgui.ImVec2(400, 0)) then
-                inputGnewsText1 = ffi.new("char[?]", #(u8'Уважаемые жители, минуточку внимания!') + 1, u8'Уважаемые жители, минуточку внимания!')
-                inputGnewsText2 = ffi.new("char[?]", #(u8'Сейчас пройдет собеседование в Больницу ш. Los-Santos.') + 1, u8'Сейчас пройдет собеседование в Больницу ш. Los-Santos.')
-                inputGnewsText3 = ffi.new("char[?]", #(u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12') + 1, u8'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12')
+        if imgui.CollapsingHeader('Отправка по шаблонам') then
+            if imgui.Button('Собеседование (начало-БЛС)', imgui.ImVec2(400, 0)) then
+                inputGnewsText1 = ffi.new("char[?]", #('Уважаемые жители, минуточку внимания!') + 1, 'Уважаемые жители, минуточку внимания!')
+                inputGnewsText2 = ffi.new("char[?]", #('Сейчас пройдет собеседование в Больницу ш. Los-Santos.') + 1, 'Сейчас пройдет собеседование в Больницу ш. Los-Santos.')
+                inputGnewsText3 = ffi.new("char[?]", #('Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12') + 1, 'Прихватите документы, и не забудьте мед. карту! Ждем GPS 3-12')
             end
         end
 
