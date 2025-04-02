@@ -11,7 +11,7 @@ local faicons = require('fAwesome6')
 local ffi = require('ffi')
 local encoding = require 'encoding'
 encoding.default = 'CP1251'
-local u8 = encoding.UTF8
+local function u8(s) return encoding.UTF8:decode(s) end
 local inicfg = require 'inicfg'
 local vector = require("vector3d")
 
@@ -1128,7 +1128,7 @@ function main()
 
     sampSendChat('/st')
 
-    sampAddChatMessage('[Med Helper]: {FFFFFF}Med Helper обновлен успешно! Версия {FF1493}1.0', 0xFF1493)
+    sampAddChatMessage(u8'[Med Helper]: {FFFFFF}Med Helper обновлен успешно! Версия {FF1493}1.0', 0xFF1493)
     sampRegisterChatCommand("medhelp", cmd_medhelp)
     sampRegisterChatCommand('mh', function() MainMenu[0] = not MainMenu[0] end)
     sampRegisterChatCommand('gmenu', function()
